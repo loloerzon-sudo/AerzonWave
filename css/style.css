@@ -1302,3 +1302,84 @@ input:checked + .toggle-slider:before {
   from { height: 20%; }
   to { height: 100%; }
 }
+
+/* Creator Card in Settings Drawer */
+.creator-card {
+  margin-top: 14px;
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(254, 1, 154, 0.08) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.creator-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.creator-avatar {
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 242, 254, 0.2);
+  border: 1px solid var(--accent-cyan);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+}
+
+.creator-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.creator-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.4px;
+}
+
+.creator-role {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.creator-link-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(0, 242, 254, 0.15);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.creator-link-btn:hover {
+  background: rgba(0, 242, 254, 0.3);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.5);
+  transform: translateY(-1px);
+}
+
+.external-arrow {
+  font-size: 12px;
+  color: var(--accent-cyan);
+  transition: transform var(--transition-fast);
+}
+
+.creator-link-btn:hover .external-arrow {
+  transform: translate(2px, -2px);
+}

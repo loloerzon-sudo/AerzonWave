@@ -1,6 +1,7 @@
-# AetherWave - 3D Web Music Visualizer
+# AerzonWave - 3D Cyber Audio Visualizer
+*Created by [Nerzon](https://nerzon.online)*
 
-A zero-dependency, local-first 3D Music Visualizer crafted with WebGL / Three.js and the Web Audio API. Features live Spotify/System Audio sync, multiline kinetic typography, freeform RGB color customization, 7 visual modes, in-browser MP4 video recording, and 100% free online deployment via GitHub Pages.
+A zero-dependency, local-first 3D Cyber Audio Visualizer crafted with WebGL / Three.js, UnrealBloomPass post-processing, and the Web Audio API. Features live system sound/tab loopback sync, multiline kinetic typography, 8 procedural visual modes, freeform RGB color palettes, in-browser 60 FPS 1080p MP4 video rendering, and 100% free online deployment via GitHub Pages.
 
 ---
 
