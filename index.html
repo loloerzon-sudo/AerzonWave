@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AetherWave // 3D Music Visualizer</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Google Fonts for Typography options -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@800;900&family=Orbitron:wght@700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+  <!-- Three.js r128 CDN & Post-Processing (UnrealBloomPass) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+</head>
+<body>
+
+  <!-- Fullscreen App Container -->
+  <div id="app-container">
+
+    <!-- Top Edge Hover Zone for Revealing HUD when Hidden -->
+    <div id="hud-reveal-trigger"></div>
+
+    <!-- Aspect Ratio Constrained Canvas Wrapper -->
+    <div id="canvas-wrapper" class="ratio-full">
+      <canvas id="render-canvas"></canvas>
+    </div>
+
+    <!-- Drag & Drop Audio Overlay -->
+    <div id="dropzone-overlay">
+      <div class="drop-icon">♫</div>
+      <h3>Drop Audio File Here</h3>
+      <p>Supports MP3, WAV, OGG, FLAC, M4A</p>
+    </div>
+
+    <!-- Floating Recording Active Banner (Active during video export) -->
+    <div id="recording-banner">
+      <div class="rec-indicator">
+        <div class="rec-dot"></div>
+        <span>REC</span>
+      </div>
+
+      <div class="rec-progress-container">
+        <div class="rec-time-text">
+          <span id="rec-time-elapsed">00:00</span>
+          <span id="rec-time-total">--:--</span>
+        </div>
+        <div class="rec-progress-track">
+          <div id="rec-progress-fill" class="rec-progress-fill"></div>
+        </div>
+      </div>
+
+      <button id="btn-finish-recording" class="glass-btn accent" style="padding: 6px 12px; font-size: 11px;">
+        Finish & Download
+      </button>
+
+      <button id="btn-cancel-recording" class="glass-btn" style="padding: 6px 10px; font-size: 11px;">
+        Cancel
+      </button>
+    </div>
+
+    <!-- Top Navigation HUD -->
+    <header id="top-hud" class="hud-element">
+      <div class="brand-badge">
+        <div class="brand-pulse"></div>
+        <h1>AetherWave</h1>
+      </div>
+
+      <!-- Aspect Ratio Framing Selector (Full, 9:16, 16:9, 1:1) -->
+      <div class="aspect-selector" title="Visual Frame Ratio">
+        <button class="aspect-btn active" data-ratio="full">FULL</button>
+        <button class="aspect-btn" data-ratio="9-16">9:16</button>
+        <button class="aspect-btn" data-ratio="16-9">16:9</button>
+        <button class="aspect-btn" data-ratio="1-1">1:1</button>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="top-actions">
+        <!-- Auto-Pilot / Party Mode -->
+        <button id="btn-autopilot" class="glass-btn" title="Auto-Pilot Mode (A)">
+          <span>⚡</span> Auto-Pilot
+        </button>
+
+        <!-- Surprise Me / Randomize -->
+        <button id="btn-randomize" class="glass-btn" title="Surprise Me (R)">
+          <span>✨</span> Shuffle
+        </button>
+
+        <!-- Text Studio Button -->
+        <button id="btn-text" class="glass-btn accent" title="Custom Kinetic Text (T)">
+          <span>✍️</span> Text
+        </button>
+
+        <!-- Settings Drawer -->
+        <button id="btn-settings" class="glass-btn" title="Audio & Visual Settings">
+          <span>⚙️</span> Settings
+        </button>
+
+        <!-- Fullscreen -->
+        <button id="btn-fullscreen" class="glass-btn" title="Toggle Fullscreen (F)">
+          <span>⛶</span>
+        </button>
+
+        <!-- Hide HUD -->
+        <button id="btn-hide-hud" class="glass-btn" title="Hide HUD (H)">
+          <span>👁️</span>
+        </button>
+
+        <!-- Help -->
+        <button id="btn-help" class="glass-btn" title="Keyboard Shortcuts (?)">
+          <span>?</span>
+        </button>
+      </div>
+    </header>
+
+
+    <!-- Bottom Player & Visual Mode Switcher HUD -->
+    <footer id="bottom-hud" class="hud-element">
+      <!-- Playback Controls -->
+      <div class="playback-controls">
+        <button id="prev-track-btn" class="playback-step-btn" title="Previous Track (Spotify)">⏮</button>
+        <button id="play-pause-btn" class="play-pause-btn" title="Play / Pause (Space)">▶</button>
+        <button id="next-track-btn" class="playback-step-btn" title="Next Track (Spotify)">⏭</button>
+        <div class="track-info-pill">
+          <span id="track-title" class="track-title">Procedural Cyberwave</span>
+          <span id="track-artist" class="track-artist">Click Play to start built-in demo</span>
+        </div>
+      </div>
+
+      <div class="hud-divider"></div>
+
+      <!-- 7 Visual Modes Scrollable Switcher -->
+      <div class="mode-pills-container">
+        <div class="mode-pills">
+          <button class="mode-pill active" data-mode="cosmic" title="Cosmic Swarm (1)">
+            <span>🌌</span> Cosmic
+          </button>
+          <button class="mode-pill" data-mode="tunnel" title="Cyber Tunnel (2)">
+            <span>🏎️</span> Tunnel
+          </button>
+          <button class="mode-pill" data-mode="liquid" title="Liquid Orb (3)">
+            <span>🔮</span> Liquid
+          </button>
+          <button class="mode-pill" data-mode="textArena" title="Kinetic Text Arena (4)">
+            <span>🏛️</span> Arena
+          </button>
+          <button class="mode-pill" data-mode="spectrumCity" title="Neon Spectrum City (5)">
+            <span>🏙️</span> City
+          </button>
+          <button class="mode-pill" data-mode="blackHole" title="Black Hole Singularity (6)">
+            <span>🕳️</span> Singularity
+          </button>
+          <button class="mode-pill" data-mode="warpDrive" title="Warp Drive (7)">
+            <span>🌌</span> Warp Drive
+          </button>
+          <button class="mode-pill" data-mode="polyhedra" title="Sacred Polyhedra (8)">
+            <span>💎</span> Polyhedra
+          </button>
+        </div>
+      </div>
+
+      <div class="hud-divider"></div>
+
+      <!-- 1-Click Real-time System/Tab Audio Sync (Spotify, YouTube, Desktop) -->
+      <button id="btn-spotify-sync-sound" class="glass-btn sync-sound-btn" title="1-Click Direct Audio Sync (Real-time Spotify & System Sound loopback)">
+        <span class="sync-icon">⚡</span> <span class="sync-label">Sync Sound</span>
+      </button>
+
+      <!-- Live Audio Modal Button -->
+      <button id="btn-live-audio" class="glass-btn" title="Live Audio Source Menu">
+        <span>🔊</span> Live Audio
+      </button>
+
+      <!-- File Upload Button -->
+      <input type="file" id="audio-file-input" accept="audio/*" style="display:none;">
+      <button id="btn-upload" class="glass-btn" title="Load Audio File">
+        <span>📁</span> Open Audio
+      </button>
+    </footer>
+
+    <!-- Render Video Modal -->
+    <div id="render-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="drawer-header">
+          <h3><span>🎬</span> Render Animation to Video</h3>
+          <button id="close-render-btn" class="close-btn">✕</button>
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+          Export your visualizer animation as a high-definition video with synchronized digital audio. The HUD controls are automatically excluded from the recorded video!
+        </div>
+
+        <!-- Option 1: Full Track Render -->
+        <div id="opt-render-full" class="render-option-card">
+          <div class="render-option-title">
+            <span>🎵</span> Render Full Track
+          </div>
+          <div class="render-option-desc">
+            Automatically rewinds to 0:00, plays through the track once, and auto-downloads the completed video as soon as the song ends.
+          </div>
+        </div>
+
+        <!-- Option 2: Record Custom Clip -->
+        <div id="opt-record-clip" class="render-option-card">
+          <div class="render-option-title">
+            <span>✂️</span> Record Custom Clip
+          </div>
+          <div class="render-option-desc">
+            Starts recording immediately. Click "Finish & Download" whenever you want to capture a short 15s/30s snippet for TikTok/Reels.
+          </div>
+        </div>
+
+        <!-- Quality / FPS Selection -->
+        <div class="control-group" style="margin-top: 14px; margin-bottom: 0;">
+          <div class="control-label-row">
+            <span>Video Framerate</span>
+            <span id="val-render-fps">60 FPS</span>
+          </div>
+          <select id="select-render-fps" class="styled-select">
+            <option value="60">60 FPS (Ultra Smooth - Recommended)</option>
+            <option value="30">30 FPS (Standard)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Audio Modal -->
+    <div id="live-audio-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="drawer-header">
+          <h3><span>🔊</span> Sync with Computer Sounds</h3>
+          <button id="close-live-btn" class="close-btn">✕</button>
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+          Sync the visualizer with <b>Spotify</b>, <b>YouTube</b>, games, or any audio playing on your computer!
+        </div>
+
+        <!-- Option 1: System Audio / Spotify -->
+        <div id="opt-live-system" class="render-option-card">
+          <div class="render-option-title">
+            <span>🖥️</span> Spotify & System Audio (Recommended)
+          </div>
+          <div class="render-option-desc">
+            Direct digital sound loopback. When the browser prompt opens, select <b>"Entire Screen"</b> or <b>"Tab/Window"</b> and make sure <b>☑ "Share audio"</b> is checked!
+          </div>
+        </div>
+
+        <!-- Option 2: Microphone Input -->
+        <div id="opt-live-mic" class="render-option-card">
+          <div class="render-option-title">
+            <span>🎙️</span> Microphone / DJ Speakers
+          </div>
+          <div class="render-option-desc">
+            Captures live sound from your microphone or external room audio.
+          </div>
+        </div>
+
+        <!-- Disconnect Button (shown when active) -->
+        <div id="live-disconnect-container" style="display: none; margin-top: 10px;">
+          <button id="btn-disconnect-live" class="glass-btn" style="width: 100%; border-color: rgba(255, 71, 87, 0.4); color: #ff4757;">
+            Disconnect Live Audio Sync
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Text Studio Drawer Panel -->
+    <aside id="text-drawer" class="drawer-panel">
+      <div class="drawer-header">
+        <h3><span>✍️</span> Kinetic Text Studio</h3>
+        <button id="close-text-btn" class="close-btn">✕</button>
+      </div>
+
+      <!-- Live Phrase Input (Multiline) -->
+      <div class="control-group">
+        <div class="control-group-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Custom Display Text</span>
+          <span id="text-lock-indicator" style="font-size: 10px; color: var(--accent-cyan); display: none;">🔒 Locked</span>
+        </div>
+        <div class="toggle-row" style="margin-bottom: 8px;">
+          <span>Lock Text (Protect from Auto-Pilot / Shuffle)</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-lock-text-drawer">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <textarea id="input-text-phrase" class="styled-input styled-textarea" rows="3" placeholder="Type text here...&#10;Press Enter for 2nd / 3rd lines">NIRZ
+AETHERWAVE</textarea>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">
+          Press <b>Enter</b> to add 2nd and 3rd lines! Fits and auto-scales cleanly.
+        </div>
+      </div>
+
+      <!-- Font Selector -->
+      <div class="control-group">
+        <div class="control-group-title">Typography Style</div>
+        <select id="select-text-font" class="styled-select">
+          <option value="'Orbitron', sans-serif">Cyberpunk Futuristic (Orbitron)</option>
+          <option value="'Montserrat', sans-serif">Bold Impact Display (Montserrat)</option>
+          <option value="'Cinzel', serif">Neon Mythic Serif (Cinzel)</option>
+          <option value="'Space Mono', monospace">Terminal Monospace (Space Mono)</option>
+        </select>
+      </div>
+
+      <!-- Crazy / Chaos Level Slider -->
+      <div class="control-group">
+        <div class="control-group-title">Crazy / Chaos Dynamics</div>
+        
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Chaos & Reactivity Level</span>
+            <span id="val-text-chaos">1.40</span>
+          </div>
+          <input type="range" id="slider-text-chaos" min="0.2" max="3.0" step="0.05" value="1.4">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>3D Text Depth / Extrusion</span>
+            <span id="val-text-depth">1.60</span>
+          </div>
+          <input type="range" id="slider-text-depth" min="0.0" max="4.5" step="0.1" value="1.6">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Text Scale</span>
+            <span id="val-text-scale">1.00</span>
+          </div>
+          <input type="range" id="slider-text-scale" min="0.4" max="2.4" step="0.05" value="1.0">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Vertical Elevation</span>
+            <span id="val-text-y">0.00</span>
+          </div>
+          <input type="range" id="slider-text-y" min="-12" max="12" step="0.5" value="0.0">
+        </div>
+      </div>
+
+      <!-- Toggles -->
+      <div class="control-group">
+        <div class="control-group-title">Visibility & FX</div>
+        
+        <div class="toggle-row">
+          <span>Show Text Overlay in All Modes</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-show-text" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <span>Particle Spark Explosions on Beat</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-text-sparks" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Text Color Customization -->
+      <div class="control-group">
+        <div class="control-group-title">Text Colors & Randomization</div>
+        
+        <div class="toggle-row">
+          <span>Sync Colors with 3D Scene</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-text-sync-theme" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <span>Auto-Randomize Colors on Beat</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-text-random-colors">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div id="custom-text-colors-container" style="display: none; margin-top: 8px;">
+          <div class="color-picker-row">
+            <span>Text Core Face</span>
+            <input type="color" id="picker-text-core" value="#ffffff">
+          </div>
+          <div class="color-picker-row">
+            <span>Text Glow & Bevel</span>
+            <input type="color" id="picker-text-glow" value="#00f2fe">
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Settings & Audio Tuning Drawer -->
+    <aside id="settings-drawer" class="drawer-panel">
+      <div class="drawer-header">
+        <h3><span>⚙️</span> Audio & Visual Tuning</h3>
+        <button id="close-settings-btn" class="close-btn">✕</button>
+      </div>
+
+      <!-- Quick Actions (Render Video & Presets) -->
+      <div class="control-group" style="display: flex; flex-direction: column; gap: 8px;">
+        <button id="btn-render-modal" class="glass-btn record" style="width: 100%; justify-content: center; padding: 10px 14px; font-weight: 600; font-size: 13px;" title="Export / Render as MP4 Video">
+          <span>🎬</span> Render Video (MP4)
+        </button>
+        <button id="btn-presets" class="glass-btn" style="width: 100%; justify-content: center; padding: 9px 14px; font-size: 12px;" title="Saved Presets">
+          <span>💾</span> Manage Saved Presets
+        </button>
+      </div>
+
+
+      <!-- Real-time Spectrum Monitor -->
+      <div class="control-group">
+        <div class="control-group-title">Frequency Spectrum Monitor</div>
+        <canvas id="spectrum-canvas" width="280" height="40"></canvas>
+      </div>
+
+      <!-- Audio Sensitivity & Fine Tuning -->
+      <div class="control-group">
+        <div class="control-group-title">Audio Reactivity</div>
+        
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Bass Boost</span>
+            <span id="val-bass">1.20</span>
+          </div>
+          <input type="range" id="slider-bass" min="0.2" max="2.5" step="0.05" value="1.2">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Treble Reactivity</span>
+            <span id="val-treble">1.00</span>
+          </div>
+          <input type="range" id="slider-treble" min="0.2" max="2.5" step="0.05" value="1.0">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Overall Sensitivity</span>
+            <span id="val-sens">1.00</span>
+          </div>
+          <input type="range" id="slider-sens" min="0.4" max="2.2" step="0.05" value="1.0">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>FFT Smoothing</span>
+            <span id="val-smooth">0.82</span>
+          </div>
+          <input type="range" id="slider-smooth" min="0.5" max="0.95" step="0.01" value="0.82">
+        </div>
+      </div>
+
+      <!-- Motion & Camera Dynamics -->
+      <div class="control-group">
+        <div class="control-group-title">Motion & Dynamics</div>
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Camera Drift Speed</span>
+            <span id="val-speed">1.00</span>
+          </div>
+          <input type="range" id="slider-speed" min="0.2" max="2.5" step="0.05" value="1.0">
+        </div>
+      </div>
+
+      <!-- Neon Bloom Post-Processing FX -->
+      <div class="control-group">
+        <div class="control-group-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Neon Bloom FX (Glow)</span>
+          <span id="bloom-status-badge" style="font-size: 10px; color: var(--accent-cyan); font-weight: 700;">ACTIVE</span>
+        </div>
+        
+        <div class="toggle-row">
+          <span>Enable Bloom Glow</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-bloom" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Bloom Strength</span>
+            <span id="val-bloom-strength">1.20</span>
+          </div>
+          <input type="range" id="slider-bloom-strength" min="0.0" max="3.0" step="0.05" value="1.2">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Bloom Spread / Radius</span>
+            <span id="val-bloom-radius">0.65</span>
+          </div>
+          <input type="range" id="slider-bloom-radius" min="0.1" max="1.5" step="0.05" value="0.65">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>Beat Slam Reactivity</span>
+            <span id="val-bloom-react">0.80</span>
+          </div>
+          <input type="range" id="slider-bloom-react" min="0.0" max="2.0" step="0.05" value="0.8">
+        </div>
+      </div>
+
+      <!-- Dynamic Visual Mode Parameters Inspector -->
+      <div class="control-group" id="mode-inspector-container">
+        <div class="control-group-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Mode Parameters</span>
+          <span id="mode-inspector-name" style="color: var(--primary); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Cosmic Swarm</span>
+        </div>
+        <div id="mode-inspector-controls">
+          <!-- Dynamically populated based on active visual mode -->
+        </div>
+      </div>
+
+      <!-- Randomization & Auto-Pilot Locks -->
+      <div class="control-group">
+        <div class="control-group-title">Randomization & Auto-Pilot Locks</div>
+        <div class="toggle-row">
+          <span>Lock Visual Mode</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-lock-mode">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span>Lock Color Palette</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-lock-colors">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span>Lock Tuning Sliders</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-lock-sliders">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span>Lock Text & Settings (X)</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-lock-text">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Freeform Color Pickers -->
+      <div class="control-group">
+        <div class="control-group-title">Freeform Custom Colors</div>
+        <div class="color-pickers-row">
+          <div class="color-picker-box">
+            <span>Primary</span>
+            <input type="color" id="picker-primary" value="#00f2fe">
+          </div>
+          <div class="color-picker-box">
+            <span>Secondary</span>
+            <input type="color" id="picker-secondary" value="#fe019a">
+          </div>
+          <div class="color-picker-box">
+            <span>Accent</span>
+            <input type="color" id="picker-accent" value="#7928ca">
+          </div>
+        </div>
+      </div>
+
+      <!-- Theme Palettes -->
+      <div class="control-group">
+        <div class="control-group-title">Preset Color Themes</div>
+        <div id="palette-grid" class="palette-grid"></div>
+      </div>
+    </aside>
+
+    <!-- Presets Drawer -->
+    <aside id="presets-drawer" class="drawer-panel">
+      <div class="drawer-header">
+        <h3><span>💾</span> Custom Presets</h3>
+        <button id="close-presets-btn" class="close-btn">✕</button>
+      </div>
+
+      <div class="control-group">
+        <div class="control-group-title">Save Current Setup</div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="input-preset-name" placeholder="Preset Name..." class="styled-input">
+          <button id="btn-save-preset" class="glass-btn accent" style="padding: 8px 12px; font-size:12px;">Save</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-group-title">Saved Presets</div>
+        <div id="saved-presets-list" class="presets-list"></div>
+      </div>
+    </aside>
+
+    <!-- Keyboard Shortcuts Help Modal -->
+    <div id="help-modal">
+      <div class="drawer-header">
+        <h3><span>⌨️</span> Keyboard Shortcuts</h3>
+        <button id="close-help-btn" class="close-btn">✕</button>
+      </div>
+      <div class="hotkey-list">
+        <div class="hotkey-row">
+          <span>Play / Pause</span>
+          <span class="key-badge">Space</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Surprise Me (Randomize)</span>
+          <span class="key-badge">R</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Toggle Kinetic Text Overlay</span>
+          <span class="key-badge">T</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Toggle Auto-Pilot</span>
+          <span class="key-badge">A</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Cosmic Swarm Mode</span>
+          <span class="key-badge">1</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Cyber Tunnel Mode</span>
+          <span class="key-badge">2</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Liquid Orb Mode</span>
+          <span class="key-badge">3</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Kinetic Text Arena</span>
+          <span class="key-badge">4</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Neon Spectrum City</span>
+          <span class="key-badge">5</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Black Hole Singularity</span>
+          <span class="key-badge">6</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Warp Drive</span>
+          <span class="key-badge">7</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Sacred Polyhedra</span>
+          <span class="key-badge">8</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Toggle Fullscreen</span>
+          <span class="key-badge">F</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Show / Hide HUD</span>
+          <span class="key-badge">H</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Lock Visual Mode</span>
+          <span class="key-badge">M</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Lock Color Palette</span>
+          <span class="key-badge">C</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Lock / Unlock Text</span>
+          <span class="key-badge">X</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Rotate 3D View</span>
+          <span class="key-badge">Click + Drag</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Zoom In / Out</span>
+          <span class="key-badge">Mouse Wheel</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Reset Camera View</span>
+          <span class="key-badge">Double Click</span>
+        </div>
+        <div class="hotkey-row">
+          <span>Close Menus</span>
+          <span class="key-badge">Esc</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+  </div>
+
+  <!-- Application Logic Modules -->
+  <script src="js/audio.js"></script>
+  <script src="js/recorder.js"></script>
+  <script src="js/textOverlay.js"></script>
+  <script src="js/modes/cosmic.js"></script>
+  <script src="js/modes/tunnel.js"></script>
+  <script src="js/modes/liquid.js"></script>
+  <script src="js/modes/textArena.js"></script>
+  <script src="js/modes/spectrumCity.js"></script>
+  <script src="js/modes/blackHole.js"></script>
+  <script src="js/modes/warpDrive.js"></script>
+  <script src="js/modes/lasers.js"></script>
+  <script src="js/modes/polyhedra.js"></script>
+  <script src="js/presets.js"></script>
+  <script src="js/visualizer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
