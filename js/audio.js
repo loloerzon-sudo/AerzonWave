@@ -118,11 +118,19 @@ class AudioEngine {
       this.audioElement.pause();
     }
 
-    try {
       // Screen & System audio capture via getDisplayMedia
+      // Using modern systemAudio & audio hints for Chromium / Edge / Safari / Firefox
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: true
+        video: {
+          displaySurface: "browser"
+        },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 2
+        },
+        systemAudio: "include"
       });
 
       const audioTracks = stream.getAudioTracks();
