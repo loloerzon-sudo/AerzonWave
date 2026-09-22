@@ -694,9 +694,10 @@ class App {
   bindSlider(id, valId, cb) {
     const slider = document.getElementById(id);
     const valDisplay = document.getElementById(valId);
+    if (!slider) return;
     slider.addEventListener("input", (e) => {
       const val = parseFloat(e.target.value);
-      valDisplay.textContent = val.toFixed(2);
+      if (valDisplay) valDisplay.textContent = val.toFixed(2);
       cb(val);
     });
   }
@@ -1252,6 +1253,14 @@ class App {
 window.App = App;
 
 // Start app
-window.addEventListener("DOMContentLoaded", () => {
-  new App();
-});
+const bootstrapApp = () => {
+  if (!window.appInstance) {
+    new App();
+  }
+};
+
+if (document.readyState === "loading") {
+  window.addEventListener("DOMContentLoaded", bootstrapApp);
+} else {
+  bootstrapApp();
+}
