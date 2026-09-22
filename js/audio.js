@@ -45,12 +45,14 @@ class AudioEngine {
     this.trebleBoost = 1.0;
     this.sensitivity = 1.0;
 
-    // Beat Detection
+    // Beat Detection (True Kick/Transient Dynamic Flux)
     this.beatDetected = false;
-    this.beatCutoff = 0;
-    this.beatDecayRate = 0.92;
+    this.beatCutoff = 0.35;
+    this.beatDecayRate = 0.96;
     this.lastBeatTime = 0;
-    this.minBeatInterval = 160;
+    this.minBeatInterval = 240; // Clamped to 240ms max tempo (up to 250 BPM) to prevent double/spastic triggers
+    this.bassEnergyHistory = [];
+    this.historyLength = 40;
 
     // State
     this.isPlaying = false;
@@ -536,13 +538,45 @@ class AudioEngine {
     this.treble = Math.min(1.0, rawTreble * this.trebleBoost * this.sensitivity);
     this.overall = Math.min(1.0, rawOverall * this.sensitivity);
 
-    const now = performance.now();
-    this.beatCutoff *= this.beatDecayRate;
-    if (this.beatCutoff < 0.25) this.beatCutoff = 0.25;
+    // 1. Precise Sub-Bass Extraction for Kick Drum (20Hz - 130Hz)
+    let kickSum = 0;
+    const kickEnd = Math.min(8, binCount);
+    for (let i = 1; i < kickEnd; i++) kickSum += this.frequencyData[i];
+    const kickEnergy = (kickSum / (kickEnd - 1)) / 255;
 
-    if (this.bass > this.beatCutoff && (now - this.lastBeatTime) > this.minBeatInterval) {
+    // 2. Dynamic Energy History Variance Calculation
+    this.bassEnergyHistory.push(kickEnergy);
+    if (this.bassEnergyHistory.length > this.historyLength) {
+      this.bassEnergyHistory.shift();
+    }
+
+    let avgEnergy = 0;
+    for (let i = 0; i < this.bassEnergyHistory.length; i++) {
+      avgEnergy += this.bassEnergyHistory[i];
+    }
+    avgEnergy /= this.bassEnergyHistory.length;
+
+    // Energy variance
+    let variance = 0;
+    for (let i = 0; i < this.bassEnergyHistory.length; i++) {
+      variance += Math.pow(this.bassEnergyHistory[i] - avgEnergy, 2);
+    }
+    variance /= this.bassEnergyHistory.length;
+
+    // Adaptive threshold multiplier based on dynamic range (C factor)
+    const cFactor = Math.max(1.18, (-15.0 * variance) + 1.45);
+    const dynamicThreshold = avgEnergy * cFactor;
+
+    const now = performance.now();
+    this.beatCutoff = Math.max(dynamicThreshold, this.beatCutoff * this.beatDecayRate);
+
+    // True musical beat trigger: kick transient must exceed local moving average & decay threshold
+    const isKickTransient = (kickEnergy > this.beatCutoff) && (kickEnergy > 0.28);
+    const hasEnoughSpacing = (now - this.lastBeatTime) > this.minBeatInterval;
+
+    if (isKickTransient && hasEnoughSpacing) {
       this.beatDetected = true;
-      this.beatCutoff = this.bass * 1.15;
+      this.beatCutoff = kickEnergy * 1.25; // instant peak hold to block echo rebounds
       this.lastBeatTime = now;
       this.notifyBeat();
     } else {
