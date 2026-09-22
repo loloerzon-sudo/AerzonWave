@@ -532,8 +532,13 @@ class VisualizerEngine {
       this.bloomPass.strength = Math.max(0, dynamicStrength);
       this.bloomPass.radius = Math.max(0.05, dynamicRadius);
 
-      // Render through post-processing pipeline
-      this.composer.render();
+      // Render through post-processing pipeline with automatic graceful fallback
+      try {
+        this.composer.render();
+      } catch (err) {
+        console.warn("EffectComposer render error, falling back to WebGLRenderer:", err);
+        this.renderer.render(this.scene, this.camera);
+      }
     } else {
       // Direct WebGL render fallback
       this.renderer.render(this.scene, this.camera);
